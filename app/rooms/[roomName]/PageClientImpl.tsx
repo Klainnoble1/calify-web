@@ -1,0 +1,297 @@
+'use client';
+
+import React from 'react';
+import { decodePassphrase } from '@/lib/client-utils';
+import { DebugMode } from '@/lib/Debug';
+import { KeyboardShortcuts } from '@/lib/KeyboardShortcuts';
+import { RecordingIndicator } from '@/lib/RecordingIndicator';
+import { SettingsMenu } from '@/lib/SettingsMenu';
+import { ConnectionDetails } from '@/lib/types';
+import {
+  formatChatMessageLinks,
+  LocalUserChoices,
+  PreJoin,
+  RoomContext,
+  VideoConference,
+} from '@livekit/components-react';
+import {
+  ExternalE2EEKeyProvider,
+  RoomOptions,
+  VideoCodec,
+  VideoPresets,
+  Room,
+  DeviceUnsupportedError,
+  RoomConnectOptions,
+  RoomEvent,
+  TrackPublishDefaults,
+  VideoCaptureOptions,
+} from 'livekit-client';
+import { useRouter } from 'next/navigation';
+import { useSetupE2EE } from '@/lib/useSetupE2EE';
+import { useLowCPUOptimizer } from '@/lib/usePerfomanceOptimiser';
+import { Link, Copy, Check } from 'lucide-react';
+
+const CONN_DETAILS_ENDPOINT =
+  process.env.NEXT_PUBLIC_CONN_DETAILS_ENDPOINT ?? '/api/connection-details';
+const SHOW_SETTINGS_MENU = process.env.NEXT_PUBLIC_SHOW_SETTINGS_MENU == 'true';
+
+export function PageClientImpl(props: {
+  roomName: string;
+  region?: string;
+  hq: boolean;
+  codec: VideoCodec;
+  singlePeerConnection: boolean;
+}) {
+  const [preJoinChoices, setPreJoinChoices] = React.useState<LocalUserChoices | undefined>(
+    undefined,
+  );
+  const preJoinDefaults = React.useMemo(() => {
+    return {
+      username: '',
+      videoEnabled: true,
+      audioEnabled: true,
+    };
+  }, []);
+  const [connectionDetails, setConnectionDetails] = React.useState<ConnectionDetails | undefined>(
+    undefined,
+  );
+
+  const handlePreJoinSubmit = React.useCallback(async (values: LocalUserChoices) => {
+    setPreJoinChoices(values);
+    const url = new URL(CONN_DETAILS_ENDPOINT, window.location.origin);
+    url.searchParams.append('roomName', props.roomName);
+    url.searchParams.append('participantName', values.username);
+    if (props.region) {
+      url.searchParams.append('region', props.region);
+    }
+    const connectionDetailsResp = await fetch(url.toString());
+    const connectionDetailsData = await connectionDetailsResp.json();
+    setConnectionDetails(connectionDetailsData);
+  }, []);
+  const handlePreJoinError = React.useCallback((e: any) => console.error(e), []);
+
+  return (
+    <main data-lk-theme="default" style={{ height: '100%' }}>
+      {connectionDetails === undefined || preJoinChoices === undefined ? (
+        <div style={{ display: 'grid', placeItems: 'center', height: '100%' }}>
+          <PreJoin
+            defaults={preJoinDefaults}
+            onSubmit={handlePreJoinSubmit}
+            onError={handlePreJoinError}
+          />
+        </div>
+      ) : (
+        <VideoConferenceComponent
+          connectionDetails={connectionDetails}
+          userChoices={preJoinChoices}
+          options={{
+            codec: props.codec,
+            hq: props.hq,
+            singlePeerConnection: props.singlePeerConnection,
+          }}
+          roomName={props.roomName}
+        />
+      )}
+    </main>
+  );
+}
+
+function VideoConferenceComponent(props: {
+  userChoices: LocalUserChoices;
+  connectionDetails: ConnectionDetails;
+  roomName: string;
+  options: {
+    hq: boolean;
+    codec: VideoCodec;
+    singlePeerConnection: boolean;
+  };
+}) {
+  const keyProvider = new ExternalE2EEKeyProvider();
+  const { worker, e2eePassphrase } = useSetupE2EE();
+  const e2eeEnabled = !!(e2eePassphrase && worker);
+
+  const [e2eeSetupComplete, setE2eeSetupComplete] = React.useState(false);
+
+  const roomOptions = React.useMemo((): RoomOptions => {
+    let videoCodec: VideoCodec | undefined = props.options.codec ? props.options.codec : 'vp9';
+    if (e2eeEnabled && (videoCodec === 'av1' || videoCodec === 'vp9')) {
+      videoCodec = undefined;
+    }
+    const videoCaptureDefaults: VideoCaptureOptions = {
+      deviceId: props.userChoices.videoDeviceId ?? undefined,
+      resolution: props.options.hq ? VideoPresets.h2160 : VideoPresets.h720,
+    };
+    const publishDefaults: TrackPublishDefaults = {
+      dtx: false,
+      videoSimulcastLayers: props.options.hq
+        ? [VideoPresets.h1080, VideoPresets.h720]
+        : [VideoPresets.h540, VideoPresets.h216],
+      red: !e2eeEnabled,
+      videoCodec,
+    };
+    return {
+      videoCaptureDefaults: videoCaptureDefaults,
+      publishDefaults: publishDefaults,
+      audioCaptureDefaults: {
+        deviceId: props.userChoices.audioDeviceId ?? undefined,
+      },
+      adaptiveStream: true,
+      dynacast: true,
+      e2ee: keyProvider && worker && e2eeEnabled ? { keyProvider, worker } : undefined,
+      singlePeerConnection: props.options.singlePeerConnection,
+    };
+  }, [props.userChoices, props.options.hq, props.options.codec]);
+
+  const room = React.useMemo(() => new Room(roomOptions), []);
+
+  React.useEffect(() => {
+    if (e2eeEnabled) {
+      keyProvider
+        .setKey(decodePassphrase(e2eePassphrase))
+        .then(() => {
+          room.setE2EEEnabled(true).catch((e) => {
+            if (e instanceof DeviceUnsupportedError) {
+              alert(
+                `You're trying to join an encrypted meeting, but your browser does not support it. Please update it to the latest version and try again.`,
+              );
+              console.error(e);
+            } else {
+              throw e;
+            }
+          });
+        })
+        .then(() => setE2eeSetupComplete(true));
+    } else {
+      setE2eeSetupComplete(true);
+    }
+  }, [e2eeEnabled, room, e2eePassphrase]);
+
+  const connectOptions = React.useMemo((): RoomConnectOptions => {
+    return {
+      autoSubscribe: true,
+    };
+  }, []);
+
+  React.useEffect(() => {
+    room.on(RoomEvent.Disconnected, handleOnLeave);
+    room.on(RoomEvent.EncryptionError, handleEncryptionError);
+    room.on(RoomEvent.MediaDevicesError, handleError);
+
+    if (e2eeSetupComplete) {
+      room
+        .connect(
+          props.connectionDetails.serverUrl,
+          props.connectionDetails.participantToken,
+          connectOptions,
+        )
+        .catch((error) => {
+          handleError(error);
+        });
+      if (props.userChoices.videoEnabled) {
+        room.localParticipant.setCameraEnabled(true).catch((error) => {
+          handleError(error);
+        });
+      }
+      if (props.userChoices.audioEnabled) {
+        room.localParticipant.setMicrophoneEnabled(true).catch((error) => {
+          handleError(error);
+        });
+      }
+    }
+    return () => {
+      room.off(RoomEvent.Disconnected, handleOnLeave);
+      room.off(RoomEvent.EncryptionError, handleEncryptionError);
+      room.off(RoomEvent.MediaDevicesError, handleError);
+    };
+  }, [e2eeSetupComplete, room, props.connectionDetails, props.userChoices]);
+
+  const lowPowerMode = useLowCPUOptimizer(room);
+
+  const router = useRouter();
+  const handleOnLeave = React.useCallback(() => router.push('/'), [router]);
+  const handleError = React.useCallback((error: Error) => {
+    console.error(error);
+    alert(`Encountered an unexpected error, check the console logs for details: ${error.message}`);
+  }, []);
+  const handleEncryptionError = React.useCallback((error: Error) => {
+    console.error(error);
+    alert(
+      `Encountered an unexpected encryption error, check the console logs for details: ${error.message}`,
+    );
+  }, []);
+
+  React.useEffect(() => {
+    if (lowPowerMode) {
+      console.warn('Low power mode enabled');
+    }
+  }, [lowPowerMode]);
+
+  return (
+    <div className="lk-room-container" style={{ position: 'relative' }}>
+      <RoomContext.Provider value={room}>
+        <InvitePanel roomName={props.roomName} />
+        <KeyboardShortcuts />
+        <VideoConference
+          chatMessageFormatter={formatChatMessageLinks}
+          SettingsComponent={SHOW_SETTINGS_MENU ? SettingsMenu : undefined}
+        />
+        <DebugMode />
+        <RecordingIndicator />
+      </RoomContext.Provider>
+    </div>
+  );
+}
+
+function InvitePanel({ roomName }: { roomName: string }) {
+  const [copied, setCopied] = React.useState(false);
+  const [open, setOpen] = React.useState(true);
+
+  const inviteUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/rooms/${roomName}`
+    : '';
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(inviteUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  if (!open) return null;
+
+  return (
+    <div style={{
+      position: 'absolute', top: '16px', left: '50%', transform: 'translateX(-50%)',
+      zIndex: 100, background: 'rgba(32,33,36,0.95)', backdropFilter: 'blur(12px)',
+      border: '1px solid #3c4043', borderRadius: '14px', padding: '16px 20px',
+      display: 'flex', alignItems: 'center', gap: '12px',
+      boxShadow: '0 8px 32px rgba(0,0,0,0.5)', maxWidth: '480px', width: 'calc(100vw - 40px)',
+    }}>
+      <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(26,115,232,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <Link size={16} color="#1a73e8" />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontSize: '12px', color: '#9aa0a6', margin: '0 0 2px' }}>Invite others to this meeting</p>
+        <p style={{ fontSize: '13px', color: '#e8eaed', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: 0 }}>
+          {inviteUrl}
+        </p>
+      </div>
+      <button
+        onClick={copyLink}
+        style={{
+          display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px',
+          background: copied ? 'rgba(52,168,83,0.15)' : '#1a73e8',
+          color: copied ? '#34a853' : '#fff', border: 'none', borderRadius: '8px',
+          cursor: 'pointer', fontSize: '13px', fontWeight: 600, flexShrink: 0, transition: 'all 0.2s',
+        }}
+      >
+        {copied ? <><Check size={14} /> Copied!</> : <><Copy size={14} /> Copy</>}
+      </button>
+      <button
+        onClick={() => setOpen(false)}
+        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9aa0a6', fontSize: '18px', lineHeight: 1, padding: '2px 4px' }}
+      >
+        ×
+      </button>
+    </div>
+  );
+}

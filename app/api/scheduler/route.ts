@@ -1,0 +1,83 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createRouteClient } from '@/utils/supabase/route';
+
+export async function GET(req: NextRequest) {
+  const supabase = await createRouteClient(req);
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { data, error } = await supabase
+    .from('scheduled_calls')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('scheduled_at', { ascending: true });
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  return NextResponse.json(data);
+}
+
+export async function POST(req: NextRequest) {
+  const supabase = await createRouteClient(req);
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // Check subscription tier
+  const { data: profile } = await supabase
+    .from('users')
+    .select('subscription_tier')
+    .eq('id', user.id)
+    .single();
+
+  const isPremium = profile?.subscription_tier === 'premium';
+
+  const body = await req.json();
+  const { recipient_number, scheduled_at, caller_id, use_ai_agent, voice_note_url } = body;
+
+  if (!isPremium && (use_ai_agent || voice_note_url)) {
+    return NextResponse.json({ error: 'Premium plan required for this feature' }, { status: 403 });
+  }
+
+  const { data, error } = await supabase
+    .from('scheduled_calls')
+    .insert({
+      user_id: user.id,
+      recipient_number,
+      scheduled_at,
+      caller_id: isPremium ? caller_id : null,
+      use_ai_agent: isPremium ? use_ai_agent : false,
+      voice_note_url: isPremium ? voice_note_url : null,
+      status: 'pending',
+    })
+    .select()
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  return NextResponse.json(data);
+}
+
+export async function DELETE(req: NextRequest) {
+  const supabase = await createRouteClient(req);
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const { id } = await req.json();
+
+  const { error } = await supabase
+    .from('scheduled_calls')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', user.id);
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  return NextResponse.json({ success: true });
+}
