@@ -324,6 +324,62 @@ footer {
   gap: 24px;
 }
 
+.voip-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
+  gap: 24px;
+}
+
+.sip-status-ready,
+.sip-status-missing {
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.sip-status-ready {
+  color: var(--calify-green);
+  background: rgba(52, 168, 83, 0.12);
+  border: 1px solid rgba(52, 168, 83, 0.25);
+}
+
+.sip-status-missing {
+  color: var(--calify-yellow);
+  background: rgba(251, 188, 4, 0.12);
+  border: 1px solid rgba(251, 188, 4, 0.25);
+}
+
+.voip-status-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.voip-status-list > div {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--calify-border);
+  border-radius: 12px;
+  background: var(--calify-surface-2);
+}
+
+.voip-status-list svg {
+  color: var(--calify-text-secondary);
+}
+
+.voip-status-list span {
+  color: var(--calify-text-secondary);
+  font-size: 13px;
+}
+
+.voip-status-list strong {
+  font-size: 12px;
+}
+
 .bulk-contact-picker {
   display: flex;
   flex-direction: column;
@@ -673,7 +729,8 @@ footer {
   .stats-grid,
   .quick-action-grid,
   .contacts-grid,
-  .scheduler-grid {
+  .scheduler-grid,
+  .voip-grid {
     grid-template-columns: 1fr;
   }
 

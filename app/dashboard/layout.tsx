@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Video, Calendar, Phone, BarChart2, Settings, LogOut, Zap, Shield, Users } from 'lucide-react';
+import { Video, Calendar, Phone, BarChart2, Settings, LogOut, Zap, Shield, Users, RadioTower } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 const navItems = [
   { href: '/dashboard', label: 'Overview', icon: BarChart2 },
   { href: '/dashboard/contacts', label: 'Contacts', icon: Users },
+  { href: '/dashboard/voip', label: 'VoIP', icon: RadioTower },
   { href: '/dashboard/scheduler', label: 'Scheduler', icon: Calendar },
   { href: '/', label: 'New Meeting', icon: Video },
   { href: '/dashboard/calls', label: 'Call Logs', icon: Phone },

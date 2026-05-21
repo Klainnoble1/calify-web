@@ -1,9 +1,18 @@
-import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { createAdminClient } from '@/utils/supabase/admin';
+import { createOutboundSipCall, getSipConfig } from '@/lib/sip-outbound';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const supabase = await createClient();
+    const cronSecret = process.env.CRON_SECRET;
+    const authHeader = req.headers.get('authorization');
+
+    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    getSipConfig();
+    const supabase = createAdminClient();
     
     // Find all pending calls whose scheduled time has passed
     const now = new Date().toISOString();
@@ -26,31 +35,35 @@ export async function GET() {
 
     for (const call of pendingCalls) {
       const isPremium = call.users.subscription_tier === 'premium';
-      const effectiveCallerId = isPremium && call.caller_id ? call.caller_id : call.users.ivr_number;
+      const effectiveCallerId = isPremium && call.caller_id
+        ? call.caller_id
+        : (call.users.ivr_number || process.env.DEFAULT_SIP_NUMBER);
 
       try {
-        // Trigger the internal SIP outbound call API
-        // For production, this should hit your deployed absolute URL.
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-        
-        const response = await fetch(`${apiUrl}/api/sip/call`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            scheduledCallId: call.id,
-            recipientNumber: call.recipient_number,
-            callerId: effectiveCallerId,
-            useAiAgent: call.use_ai_agent,
-          }),
-        });
-
-        if (!response.ok) {
-          const errData = await response.json();
-          throw new Error(errData.error || 'Failed to initiate SIP call');
+        if (!effectiveCallerId) {
+          throw new Error('No caller ID configured for scheduled call.');
         }
 
-        // The /api/sip/call route will update the status to 'calling'
-        results.push({ id: call.id, status: 'calling' });
+        const { roomName } = await createOutboundSipCall({
+          userId: call.user_id,
+          recipientNumber: call.recipient_number,
+        });
+
+        await supabase
+          .from('scheduled_calls')
+          .update({ status: 'calling', livekit_room_name: roomName })
+          .eq('id', call.id);
+
+        await supabase.from('call_logs').insert({
+          user_id: call.user_id,
+          scheduled_call_id: call.id,
+          recipient_number: call.recipient_number,
+          caller_id_used: effectiveCallerId,
+          ai_agent_used: call.use_ai_agent || false,
+          started_at: new Date().toISOString(),
+        });
+
+        results.push({ id: call.id, status: 'calling', roomName });
 
       } catch (err: any) {
         console.error(`[CRON ERROR] Failed to process call ${call.id}:`, err.message);

@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { RoomServiceClient, SipClient } from 'livekit-server-sdk';
 import { createRouteClient } from '@/utils/supabase/route';
-
-const livekitUrl = process.env.LIVEKIT_URL!.replace('wss://', 'https://');
-const apiKey = process.env.LIVEKIT_API_KEY!;
-const apiSecret = process.env.LIVEKIT_API_SECRET!;
+import { createOutboundSipCall, normalizePhoneNumber } from '@/lib/sip-outbound';
 
 export async function POST(req: NextRequest) {
   try {
@@ -23,6 +19,11 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const { scheduledCallId, recipientNumber, callerId, useAiAgent } = body;
+    const normalizedRecipient = normalizePhoneNumber(recipientNumber);
+
+    if (!normalizedRecipient) {
+      return NextResponse.json({ error: 'Enter a valid recipient phone number.' }, { status: 400 });
+    }
 
     const isPremium = profile.subscription_tier === 'premium';
 
@@ -37,29 +38,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No caller ID configured. Please set your IVR number in Settings.' }, { status: 400 });
     }
 
-    // Create a LiveKit room for this call
-    const roomName = `call-${user.id}-${Date.now()}`;
-    const roomService = new RoomServiceClient(livekitUrl, apiKey, apiSecret);
-    await roomService.createRoom({ name: roomName, emptyTimeout: 300, maxParticipants: 2 });
-
-    // Create SIP participant to bridge the PSTN call
-    const sipClient = new SipClient(livekitUrl, apiKey, apiSecret);
-
-    const sipTrunkId = process.env.LIVEKIT_SIP_TRUNK_ID;
-    if (!sipTrunkId) {
-      return NextResponse.json({ error: 'SIP Trunk not configured. Set LIVEKIT_SIP_TRUNK_ID in .env.local' }, { status: 500 });
-    }
-
-    await sipClient.createSipParticipant(
-      sipTrunkId,
-      recipientNumber,
-      roomName,
-      {
-        participantIdentity: `pstn-${recipientNumber}`,
-        participantName: recipientNumber,
-        hidePhoneNumber: false,
-      }
-    );
+    const { roomName } = await createOutboundSipCall({
+      userId: user.id,
+      recipientNumber: normalizedRecipient,
+    });
 
     // Log the call start in DB
     if (scheduledCallId) {
@@ -72,7 +54,7 @@ export async function POST(req: NextRequest) {
     await supabase.from('call_logs').insert({
       user_id: user.id,
       scheduled_call_id: scheduledCallId || null,
-      recipient_number: recipientNumber,
+      recipient_number: normalizedRecipient,
       caller_id_used: effectiveCallerId,
       ai_agent_used: useAiAgent || false,
       started_at: new Date().toISOString(),
@@ -82,7 +64,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       roomName,
-      message: `Call initiated to ${recipientNumber}`,
+      message: `Call initiated to ${normalizedRecipient}`,
     });
   } catch (err: any) {
     console.error('[SIP Call Error]', err);
