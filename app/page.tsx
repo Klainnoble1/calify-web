@@ -6,7 +6,7 @@ import React, { Suspense, useState, useEffect } from 'react';
 import { generateRoomId, encodePassphrase, randomString } from '@/lib/client-utils';
 import { createClient } from '@/utils/supabase/client';
 import {
-  Video, Phone, Calendar, ChevronRight, LogOut,
+  Video, Phone, Calendar, ChevronRight, LogOut, LayoutDashboard,
   Shield, Zap, Mic, Users, Clock, PhoneCall,
   Plus, Link as LinkIcon, Bot, Star
 } from 'lucide-react';
@@ -71,6 +71,9 @@ function HomeContent() {
               )}
               <a href="/dashboard/scheduler" className="calify-btn calify-btn-ghost" style={{ padding: '8px 14px', fontSize: '13px' }}>
                 <Calendar size={15} /> Scheduler
+              </a>
+              <a href="/dashboard" className="calify-btn calify-btn-ghost" style={{ padding: '8px 14px', fontSize: '13px' }}>
+                <LayoutDashboard size={15} /> Dashboard
               </a>
               <div className="calify-avatar" title={user.email}>{userInitial}</div>
               <button onClick={signOut} className="calify-btn calify-btn-ghost" style={{ padding: '8px' }}>

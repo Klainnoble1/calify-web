@@ -5,7 +5,7 @@ import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import {
   Calendar, Phone, Clock, Mic, UserCheck, Plus, Trash2,
-  Send, ShieldCheck, LogOut, RefreshCw, AlertCircle, Zap
+  Send, RefreshCw, AlertCircle, Users
 } from 'lucide-react';
 
 interface ScheduledCall {
@@ -23,11 +23,20 @@ interface UserProfile {
   subscription_tier: 'free' | 'premium';
 }
 
+interface ContactInvite {
+  id: string;
+  full_name: string;
+  email: string;
+  phone_number: string | null;
+  status: string;
+}
+
 export default function SchedulerPage() {
   const supabase = createClient();
   const router = useRouter();
 
   const [calls, setCalls] = useState<ScheduledCall[]>([]);
+  const [contacts, setContacts] = useState<ContactInvite[]>([]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -36,6 +45,8 @@ export default function SchedulerPage() {
   const [newNumber, setNewNumber] = useState('');
   const [newTime, setNewTime] = useState('');
   const [newCallerId, setNewCallerId] = useState('');
+  const [bulkNumbers, setBulkNumbers] = useState('');
+  const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
   const [useVoiceNote, setUseVoiceNote] = useState(false);
   const [useAIAgent, setUseAIAgent] = useState(false);
 
@@ -47,20 +58,39 @@ export default function SchedulerPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.push('/login'); return; }
 
-    const [profileRes, callsRes] = await Promise.all([
+    const [profileRes, callsRes, contactsRes] = await Promise.all([
       supabase.from('users').select('email, subscription_tier').eq('id', user.id).single(),
       fetch('/api/scheduler'),
+      supabase
+        .from('contact_invites')
+        .select('id, full_name, email, phone_number, status')
+        .order('created_at', { ascending: false }),
     ]);
 
     if (profileRes.data) setProfile(profileRes.data as UserProfile);
     if (callsRes.ok) setCalls(await callsRes.json());
+    if (contactsRes.data) setContacts(contactsRes.data as ContactInvite[]);
     setLoading(false);
   }, [supabase, router]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const addCall = async () => {
-    if (!newNumber || !newTime) return;
+    const pastedNumbers = bulkNumbers
+      .split(/[\n,;]+/)
+      .map((value) => value.replace(/[^0-9+]/g, '').trim())
+      .filter(Boolean);
+    const selectedContactNumbers = contacts
+      .filter((contact) => selectedContactIds.includes(contact.id))
+      .map((contact) => contact.phone_number?.replace(/[^0-9+]/g, '').trim())
+      .filter(Boolean) as string[];
+    const recipients = Array.from(new Set([
+      newNumber.replace(/[^0-9+]/g, '').trim(),
+      ...pastedNumbers,
+      ...selectedContactNumbers,
+    ].filter(Boolean)));
+
+    if (recipients.length === 0 || !newTime) return;
     setSaving(true);
     setError(null);
 
@@ -68,7 +98,7 @@ export default function SchedulerPage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        recipient_number: newNumber,
+        recipient_numbers: recipients,
         scheduled_at: new Date(newTime).toISOString(),
         caller_id: isPremium ? newCallerId || null : null,
         voice_note_url: useVoiceNote ? 'placeholder-url' : null,
@@ -80,14 +110,25 @@ export default function SchedulerPage() {
     if (!resp.ok) {
       setError(data.error || 'Failed to schedule call');
     } else {
-      setCalls((prev) => [...prev, data]);
+      const createdCalls = Array.isArray(data) ? data : [data];
+      setCalls((prev) => [...prev, ...createdCalls]);
       setNewNumber('');
+      setBulkNumbers('');
+      setSelectedContactIds([]);
       setNewTime('');
       setNewCallerId('');
       setUseVoiceNote(false);
       setUseAIAgent(false);
     }
     setSaving(false);
+  };
+
+  const toggleContact = (contactId: string) => {
+    setSelectedContactIds((current) =>
+      current.includes(contactId)
+        ? current.filter((id) => id !== contactId)
+        : [...current, contactId],
+    );
   };
 
   const removeCall = async (id: string) => {
@@ -108,7 +149,7 @@ export default function SchedulerPage() {
   };
 
   return (
-    <div style={{ padding: '32px', maxWidth: '1100px' }}>
+    <div className="dashboard-page">
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px' }}>
         <div>
@@ -126,7 +167,7 @@ export default function SchedulerPage() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
+      <div className="scheduler-grid">
         {/* Left Col: Add Form */}
         <div className="calify-card" style={{ alignSelf: 'flex-start' }}>
           <h2 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -135,10 +176,49 @@ export default function SchedulerPage() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--calify-text-secondary)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Recipient Number</label>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--calify-text-secondary)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Single VoIP Number</label>
               <div style={{ position: 'relative' }}>
                 <Phone size={15} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--calify-text-secondary)' }} />
                 <input className="calify-input" style={{ paddingLeft: '40px' }} placeholder="+1 234 567 8900" value={newNumber} onChange={(e) => setNewNumber(e.target.value)} />
+              </div>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--calify-text-secondary)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Bulk VoIP Numbers</label>
+              <textarea
+                className="calify-input"
+                style={{ minHeight: '96px', resize: 'vertical', lineHeight: 1.5 }}
+                placeholder={'+1 234 567 8900\n+1 555 222 3333\nOr separate with commas'}
+                value={bulkNumbers}
+                onChange={(e) => setBulkNumbers(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: '600', color: 'var(--calify-text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <Users size={14} /> Calify Contacts
+              </label>
+              <div className="bulk-contact-picker">
+                {contacts.length === 0 ? (
+                  <p>No contacts added yet. Add contacts from the Contacts dashboard.</p>
+                ) : contacts.map((contact) => {
+                  const hasPhone = Boolean(contact.phone_number);
+                  const selected = selectedContactIds.includes(contact.id);
+                  return (
+                    <label key={contact.id} className={`bulk-contact-option ${selected ? 'selected' : ''} ${!hasPhone ? 'disabled' : ''}`}>
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        disabled={!hasPhone}
+                        onChange={() => toggleContact(contact.id)}
+                      />
+                      <span>
+                        <strong>{contact.full_name}</strong>
+                        <small>{contact.phone_number || 'No phone number saved'}</small>
+                      </span>
+                    </label>
+                  );
+                })}
               </div>
             </div>
 
@@ -186,8 +266,13 @@ export default function SchedulerPage() {
               </div>
             </div>
 
-            <button onClick={addCall} disabled={saving || !newNumber || !newTime} className="calify-btn calify-btn-primary" style={{ marginTop: '16px', width: '100%', justifyContent: 'center', padding: '14px', opacity: (saving || !newNumber || !newTime) ? 0.6 : 1 }}>
-              {saving ? 'Scheduling…' : <><Calendar size={16} /> Add to Queue</>}
+            <button
+              onClick={addCall}
+              disabled={saving || !newTime || (!newNumber && !bulkNumbers && selectedContactIds.length === 0)}
+              className="calify-btn calify-btn-primary"
+              style={{ marginTop: '16px', width: '100%', justifyContent: 'center', padding: '14px', opacity: (saving || !newTime || (!newNumber && !bulkNumbers && selectedContactIds.length === 0)) ? 0.6 : 1 }}
+            >
+              {saving ? 'Scheduling...' : <><Calendar size={16} /> Schedule Bulk Calls</>}
             </button>
           </div>
         </div>

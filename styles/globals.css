@@ -318,6 +318,78 @@ footer {
   gap: 24px;
 }
 
+.scheduler-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 2fr);
+  gap: 24px;
+}
+
+.bulk-contact-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 220px;
+  overflow: auto;
+  padding: 8px;
+  background: var(--calify-surface-2);
+  border: 1px solid var(--calify-border);
+  border-radius: 12px;
+}
+
+.bulk-contact-picker p {
+  color: var(--calify-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 6px;
+}
+
+.bulk-contact-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.bulk-contact-option.selected {
+  border-color: rgba(26, 115, 232, 0.35);
+  background: rgba(26, 115, 232, 0.12);
+}
+
+.bulk-contact-option.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.bulk-contact-option input {
+  margin-top: 3px;
+  accent-color: var(--calify-blue);
+}
+
+.bulk-contact-option span {
+  min-width: 0;
+}
+
+.bulk-contact-option strong,
+.bulk-contact-option small {
+  display: block;
+}
+
+.bulk-contact-option strong {
+  color: var(--calify-text);
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+
+.bulk-contact-option small {
+  color: var(--calify-text-secondary);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .contact-form-card,
 .contacts-list-card {
   align-self: flex-start;
@@ -564,7 +636,8 @@ footer {
 
   .stats-grid,
   .quick-action-grid,
-  .contacts-grid {
+  .contacts-grid,
+  .scheduler-grid {
     grid-template-columns: 1fr;
   }
 
