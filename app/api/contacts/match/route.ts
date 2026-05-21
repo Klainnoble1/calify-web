@@ -22,8 +22,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ matches: [] });
     }
 
-    // Build the query to find users matching any of the provided emails or IVR numbers
-    let query = supabase.from('users').select('id, email, full_name, ivr_number');
+    // Build the query to find users matching any of the provided emails, personal phone numbers, or IVR numbers.
+    let query = supabase.from('users').select('id, email, full_name, ivr_number, phone_number');
     
     const orConditions = [];
     if (emails.length > 0) {
@@ -31,7 +31,9 @@ export async function POST(req: NextRequest) {
       orConditions.push(`email.in.(${emails.map(e => `"${e}"`).join(',')})`);
     }
     if (phoneNumbers.length > 0) {
-      orConditions.push(`ivr_number.in.(${phoneNumbers.map(p => `"${p}"`).join(',')})`);
+      const phones = phoneNumbers.map(p => `"${p}"`).join(',');
+      orConditions.push(`phone_number.in.(${phones})`);
+      orConditions.push(`ivr_number.in.(${phones})`);
     }
 
     if (orConditions.length > 0) {
