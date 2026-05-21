@@ -5,7 +5,7 @@ import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import {
   Calendar, Phone, Clock, Mic, UserCheck, Plus, Trash2,
-  Send, RefreshCw, AlertCircle, Users
+  Send, RefreshCw, AlertCircle, Users, Upload
 } from 'lucide-react';
 
 interface ScheduledCall {
@@ -46,6 +46,8 @@ export default function SchedulerPage() {
   const [newTime, setNewTime] = useState('');
   const [newCallerId, setNewCallerId] = useState('');
   const [bulkNumbers, setBulkNumbers] = useState('');
+  const [csvFileName, setCsvFileName] = useState('');
+  const [csvImportedCount, setCsvImportedCount] = useState(0);
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
   const [useVoiceNote, setUseVoiceNote] = useState(false);
   const [useAIAgent, setUseAIAgent] = useState(false);
@@ -131,6 +133,88 @@ export default function SchedulerPage() {
     );
   };
 
+  const parseCsvRows = (text: string) => {
+    const rows: string[][] = [];
+    let current = '';
+    let row: string[] = [];
+    let inQuotes = false;
+
+    for (let index = 0; index < text.length; index += 1) {
+      const char = text[index];
+      const nextChar = text[index + 1];
+
+      if (char === '"' && inQuotes && nextChar === '"') {
+        current += '"';
+        index += 1;
+      } else if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) {
+        row.push(current.trim());
+        current = '';
+      } else if ((char === '\n' || char === '\r') && !inQuotes) {
+        if (char === '\r' && nextChar === '\n') index += 1;
+        row.push(current.trim());
+        current = '';
+        if (row.some(Boolean)) rows.push(row);
+        row = [];
+      } else {
+        current += char;
+      }
+    }
+
+    row.push(current.trim());
+    if (row.some(Boolean)) rows.push(row);
+    return rows;
+  };
+
+  const extractNumbersFromCsv = (text: string) => {
+    const rows = parseCsvRows(text);
+    if (rows.length === 0) return [];
+
+    const header = rows[0].map((cell) => cell.toLowerCase().replace(/[^a-z0-9_]/g, ''));
+    const phoneColumn = header.findIndex((cell) =>
+      ['phone', 'phonenumber', 'phone_number', 'number', 'mobile', 'recipient', 'recipientnumber', 'recipient_number'].includes(cell),
+    );
+    const dataRows = phoneColumn >= 0 ? rows.slice(1) : rows;
+    const rawValues = phoneColumn >= 0
+      ? dataRows.map((row) => row[phoneColumn] || '')
+      : dataRows.flat();
+
+    return Array.from(
+      new Set(
+        rawValues
+          .map((value) => value.replace(/[^0-9+]/g, '').trim())
+          .filter((value) => value.length >= 7),
+      ),
+    );
+  };
+
+  const importCsv = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setError(null);
+    const text = await file.text();
+    const numbers = extractNumbersFromCsv(text);
+
+    if (numbers.length === 0) {
+      setError('No phone numbers found in the CSV. Use a phone, number, mobile, or recipient_number column.');
+      event.target.value = '';
+      return;
+    }
+
+    const existingNumbers = bulkNumbers
+      .split(/[\n,;]+/)
+      .map((value) => value.replace(/[^0-9+]/g, '').trim())
+      .filter(Boolean);
+    const mergedNumbers = Array.from(new Set([...existingNumbers, ...numbers]));
+
+    setBulkNumbers(mergedNumbers.join('\n'));
+    setCsvFileName(file.name);
+    setCsvImportedCount(numbers.length);
+    event.target.value = '';
+  };
+
   const removeCall = async (id: string) => {
     await fetch('/api/scheduler', {
       method: 'DELETE',
@@ -185,6 +269,14 @@ export default function SchedulerPage() {
 
             <div>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--calify-text-secondary)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Bulk VoIP Numbers</label>
+              <label className="csv-upload-box">
+                <Upload size={17} color="#1a73e8" />
+                <span>
+                  <strong>Upload CSV</strong>
+                  <small>{csvFileName ? `${csvImportedCount} numbers imported from ${csvFileName}` : 'Use a phone, number, mobile, or recipient_number column'}</small>
+                </span>
+                <input type="file" accept=".csv,text/csv" onChange={importCsv} />
+              </label>
               <textarea
                 className="calify-input"
                 style={{ minHeight: '96px', resize: 'vertical', lineHeight: 1.5 }}

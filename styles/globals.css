@@ -343,6 +343,42 @@ footer {
   padding: 6px;
 }
 
+.csv-upload-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  margin-bottom: 10px;
+  background: rgba(26, 115, 232, 0.08);
+  border: 1px dashed rgba(26, 115, 232, 0.4);
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.csv-upload-box span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.csv-upload-box strong {
+  color: var(--calify-text);
+  font-size: 13px;
+}
+
+.csv-upload-box small {
+  color: var(--calify-text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.csv-upload-box input {
+  display: none;
+}
+
 .bulk-contact-option {
   display: flex;
   align-items: flex-start;
