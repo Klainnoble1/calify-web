@@ -2,13 +2,14 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Video, Calendar, Phone, BarChart2, Settings, LogOut, Zap, Shield } from 'lucide-react';
+import { Video, Calendar, Phone, BarChart2, Settings, LogOut, Zap, Shield, Users } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 const navItems = [
   { href: '/dashboard', label: 'Overview', icon: BarChart2 },
+  { href: '/dashboard/contacts', label: 'Contacts', icon: Users },
   { href: '/dashboard/scheduler', label: 'Scheduler', icon: Calendar },
   { href: '/', label: 'New Meeting', icon: Video },
   { href: '/dashboard/calls', label: 'Call Logs', icon: Phone },
@@ -40,14 +41,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const userInitial = (user?.email?.[0] || 'U').toUpperCase();
 
   return (
-    <div style={{ display: 'flex', height: '100vh', background: 'var(--calify-bg)', overflow: 'hidden' }}>
+    <div className="dashboard-shell">
       {/* Sidebar */}
-      <aside style={{
-        width: '240px', flexShrink: 0,
-        background: 'var(--calify-surface)',
-        borderRight: '1px solid var(--calify-border)',
-        display: 'flex', flexDirection: 'column', padding: '0',
-      }}>
+      <aside className="dashboard-sidebar">
         {/* Logo */}
         <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid var(--calify-border)' }}>
           <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
@@ -61,7 +57,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
 
         {/* Nav */}
-        <nav style={{ flex: 1, padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+        <nav className="dashboard-nav">
           {navItems.map(({ href, label, icon: Icon }) => {
             const isActive = pathname === href;
             return (
@@ -120,7 +116,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* Main content */}
-      <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+      <div className="dashboard-main">
         {children}
       </div>
     </div>

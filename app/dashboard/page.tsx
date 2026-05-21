@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { Video, Calendar, Phone, Clock, ArrowRight, PhoneCall, Bot, Zap } from 'lucide-react';
+import { Video, Calendar, Phone, Clock, ArrowRight, PhoneCall, Bot, Zap, Users } from 'lucide-react';
 import Link from 'next/link';
 
 export default function DashboardPage() {
@@ -51,7 +51,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div style={{ padding: '32px', maxWidth: '900px' }}>
+    <div className="dashboard-page">
       {/* Header */}
       <div style={{ marginBottom: '32px' }}>
         <h1 style={{ fontSize: '26px', fontWeight: '700', marginBottom: '4px' }}>
@@ -63,7 +63,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '32px' }}>
+      <div className="stats-grid">
         {statCards.map((s) => (
           <div key={s.label} style={{ background: 'var(--calify-surface)', border: '1px solid var(--calify-border)', borderRadius: '14px', padding: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
@@ -76,7 +76,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick Actions */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
+      <div className="quick-action-grid">
         <Link href="/" style={{ textDecoration: 'none' }}>
           <div className="calify-card" style={{ display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer', transition: 'border-color 0.15s' }}>
             <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(26,115,232,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -98,6 +98,19 @@ export default function DashboardPage() {
             <div>
               <p style={{ fontWeight: 600, marginBottom: '2px' }}>Schedule a Call</p>
               <p style={{ fontSize: '12px', color: 'var(--calify-text-secondary)' }}>Queue outbound PSTN calls</p>
+            </div>
+            <ArrowRight size={16} style={{ marginLeft: 'auto', color: 'var(--calify-text-secondary)' }} />
+          </div>
+        </Link>
+
+        <Link href="/dashboard/contacts" style={{ textDecoration: 'none' }}>
+          <div className="calify-card" style={{ display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(251,188,4,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Users size={22} color="#fbbc04" />
+            </div>
+            <div>
+              <p style={{ fontWeight: 600, marginBottom: '2px' }}>Add Contact</p>
+              <p style={{ fontSize: '12px', color: 'var(--calify-text-secondary)' }}>Invite someone to join Calify</p>
             </div>
             <ArrowRight size={16} style={{ marginLeft: 'auto', color: 'var(--calify-text-secondary)' }} />
           </div>

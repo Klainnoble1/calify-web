@@ -86,6 +86,16 @@ ALTER TABLE public.call_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.contact_invites ENABLE ROW LEVEL SECURITY;
 
 -- Policies: users can only read/write their own data
+DROP POLICY IF EXISTS "Users can view own profile" ON public.users;
+DROP POLICY IF EXISTS "Users can update own profile" ON public.users;
+DROP POLICY IF EXISTS "Users can manage own scheduled calls" ON public.scheduled_calls;
+DROP POLICY IF EXISTS "Users can view own call logs" ON public.call_logs;
+DROP POLICY IF EXISTS "Users can manage own contact invites" ON public.contact_invites;
+DROP POLICY IF EXISTS "Service role full access on users" ON public.users;
+DROP POLICY IF EXISTS "Service role full access on scheduled_calls" ON public.scheduled_calls;
+DROP POLICY IF EXISTS "Service role full access on call_logs" ON public.call_logs;
+DROP POLICY IF EXISTS "Service role full access on contact_invites" ON public.contact_invites;
+
 CREATE POLICY "Users can view own profile" ON public.users FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "Users can update own profile" ON public.users FOR UPDATE USING (auth.uid() = id);
 
