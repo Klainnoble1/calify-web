@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
+import { requestPremiumTestAccess } from '@/lib/premium-test-client';
 import { Video, Calendar, Phone, Clock, ArrowRight, PhoneCall, Bot, Zap, Users } from 'lucide-react';
 import Link from 'next/link';
 
@@ -21,7 +22,13 @@ export default function DashboardPage() {
         supabase.from('call_logs').select('duration_seconds, cost_cents').eq('user_id', user.id),
       ]);
 
-      if (profileRes.data) setProfile(profileRes.data);
+      if (profileRes.data) {
+        if (profileRes.data.subscription_tier !== 'premium' && await requestPremiumTestAccess()) {
+          setProfile({ ...profileRes.data, subscription_tier: 'premium' });
+        } else {
+          setProfile(profileRes.data);
+        }
+      }
       if (callsRes.data) setRecentCalls(callsRes.data);
       if (logsRes.data) {
         const logs = logsRes.data;

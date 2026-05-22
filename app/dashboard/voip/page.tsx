@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
+import { requestPremiumTestAccess } from '@/lib/premium-test-client';
 import { AlertCircle, CheckCircle2, Phone, RadioTower, RefreshCw, Shield, Zap } from 'lucide-react';
 
 interface SipStatus {
@@ -36,7 +37,11 @@ export default function VoipPage() {
         .single();
 
       if (data) {
-        setProfile(data);
+        if (data.subscription_tier !== 'premium' && await requestPremiumTestAccess()) {
+          setProfile({ ...data, subscription_tier: 'premium' });
+        } else {
+          setProfile(data);
+        }
         setCallerId(data.ivr_number || '');
       }
     }

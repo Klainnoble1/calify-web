@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Video, Calendar, Phone, BarChart2, Settings, LogOut, Zap, Shield, Users, RadioTower } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
+import { requestPremiumTestAccess } from '@/lib/premium-test-client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -25,11 +26,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) { router.push('/login'); return; }
       setUser(user);
-      supabase.from('users').select('*').eq('id', user.id).single()
-        .then(({ data }) => setProfile(data));
+      const { data } = await supabase.from('users').select('*').eq('id', user.id).single();
+      if (data?.subscription_tier !== 'premium' && await requestPremiumTestAccess()) {
+        setProfile({ ...data, subscription_tier: 'premium' });
+      } else {
+        setProfile(data);
+      }
     });
   }, []);
 

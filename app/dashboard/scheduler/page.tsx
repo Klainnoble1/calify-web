@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/utils/supabase/client';
+import { requestPremiumTestAccess } from '@/lib/premium-test-client';
 import { useRouter } from 'next/navigation';
 import {
   Calendar, Phone, Clock, Mic, UserCheck, Plus, Trash2,
@@ -72,7 +73,13 @@ export default function SchedulerPage() {
         .order('created_at', { ascending: false }),
     ]);
 
-    if (profileRes.data) setProfile(profileRes.data as UserProfile);
+    if (profileRes.data) {
+      if (profileRes.data.subscription_tier !== 'premium' && await requestPremiumTestAccess()) {
+        setProfile({ ...profileRes.data, subscription_tier: 'premium' } as UserProfile);
+      } else {
+        setProfile(profileRes.data as UserProfile);
+      }
+    }
     if (callsRes.ok) setCalls(await callsRes.json());
     if (contactsRes.data) setContacts(contactsRes.data as ContactInvite[]);
     setLoading(false);
