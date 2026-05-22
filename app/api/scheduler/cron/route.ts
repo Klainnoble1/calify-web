@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/utils/supabase/admin';
 import { createOutboundSipCall, getSipConfig } from '@/lib/sip-outbound';
+import { createVoiceNoteSignedUrl } from '@/lib/voice-notes';
 
 export async function GET(req: NextRequest) {
   try {
@@ -44,9 +45,14 @@ export async function GET(req: NextRequest) {
           throw new Error('No caller ID configured for scheduled call.');
         }
 
+        const voiceNoteUrl = await createVoiceNoteSignedUrl(call.voice_note_url);
         const { roomName } = await createOutboundSipCall({
           userId: call.user_id,
           recipientNumber: call.recipient_number,
+          callerId: effectiveCallerId,
+          useAiAgent: isPremium && Boolean(call.use_ai_agent),
+          voiceNoteUrl: isPremium ? voiceNoteUrl : null,
+          scheduledCallId: call.id,
         });
 
         await supabase

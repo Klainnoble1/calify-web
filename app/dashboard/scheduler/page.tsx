@@ -50,6 +50,9 @@ export default function SchedulerPage() {
   const [csvImportedCount, setCsvImportedCount] = useState(0);
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
   const [useVoiceNote, setUseVoiceNote] = useState(false);
+  const [voiceNoteUrl, setVoiceNoteUrl] = useState('');
+  const [voiceNoteFileName, setVoiceNoteFileName] = useState('');
+  const [uploadingVoiceNote, setUploadingVoiceNote] = useState(false);
   const [useAIAgent, setUseAIAgent] = useState(false);
 
   const isPremium = profile?.subscription_tier === 'premium';
@@ -93,6 +96,10 @@ export default function SchedulerPage() {
     ].filter(Boolean)));
 
     if (recipients.length === 0 || !newTime) return;
+    if (useVoiceNote && !voiceNoteUrl) {
+      setError('Upload a prerecorded voice note before scheduling.');
+      return;
+    }
     setSaving(true);
     setError(null);
 
@@ -103,7 +110,7 @@ export default function SchedulerPage() {
         recipient_numbers: recipients,
         scheduled_at: new Date(newTime).toISOString(),
         caller_id: isPremium ? newCallerId || null : null,
-        voice_note_url: useVoiceNote ? 'placeholder-url' : null,
+        voice_note_url: useVoiceNote ? voiceNoteUrl : null,
         use_ai_agent: useAIAgent,
       }),
     });
@@ -120,6 +127,8 @@ export default function SchedulerPage() {
       setNewTime('');
       setNewCallerId('');
       setUseVoiceNote(false);
+      setVoiceNoteUrl('');
+      setVoiceNoteFileName('');
       setUseAIAgent(false);
     }
     setSaving(false);
@@ -212,6 +221,36 @@ export default function SchedulerPage() {
     setBulkNumbers(mergedNumbers.join('\n'));
     setCsvFileName(file.name);
     setCsvImportedCount(numbers.length);
+    event.target.value = '';
+  };
+
+  const uploadVoiceNote = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploadingVoiceNote(true);
+    setError(null);
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch('/api/voice-notes/upload', {
+      method: 'POST',
+      body: formData,
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      setError(data.error || 'Failed to upload voice note');
+      setVoiceNoteUrl('');
+      setVoiceNoteFileName('');
+    } else {
+      setVoiceNoteUrl(data.voiceNoteUrl);
+      setVoiceNoteFileName(data.fileName || file.name);
+      setUseVoiceNote(true);
+    }
+
+    setUploadingVoiceNote(false);
     event.target.value = '';
   };
 
@@ -341,10 +380,21 @@ export default function SchedulerPage() {
                   <div>
                     <p style={{ fontSize: '13px', fontWeight: 500, margin: 0 }}>Prerecorded Voice</p>
                     {!isPremium && <p style={{ fontSize: '10px', color: '#fbbc04', fontWeight: 700, margin: 0 }}>PREMIUM</p>}
+                    {isPremium && voiceNoteFileName && <p style={{ fontSize: '10px', color: 'var(--calify-text-secondary)', margin: 0 }}>{voiceNoteFileName}</p>}
                   </div>
                 </div>
                 <input type="checkbox" checked={useVoiceNote} disabled={!isPremium} onChange={(e) => setUseVoiceNote(e.target.checked)} style={{ width: '16px', height: '16px', accentColor: '#1a73e8' }} />
               </div>
+              {isPremium && (
+                <label className="csv-upload-box" style={{ marginBottom: 0, opacity: uploadingVoiceNote ? 0.65 : 1 }}>
+                  <Upload size={17} color="#1a73e8" />
+                  <span>
+                    <strong>{uploadingVoiceNote ? 'Uploading...' : 'Upload voice note'}</strong>
+                    <small>{voiceNoteFileName || 'MP3, WAV, M4A, WebM, or OGG. Max 25 MB.'}</small>
+                  </span>
+                  <input type="file" accept="audio/*" disabled={uploadingVoiceNote} onChange={uploadVoiceNote} />
+                </label>
+              )}
 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', opacity: isPremium ? 1 : 0.5 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

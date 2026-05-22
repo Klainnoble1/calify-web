@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createRouteClient } from '@/utils/supabase/route';
 import { createOutboundSipCall, normalizePhoneNumber } from '@/lib/sip-outbound';
+import { createVoiceNoteSignedUrl } from '@/lib/voice-notes';
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,7 +19,7 @@ export async function POST(req: NextRequest) {
     if (!profile) return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
 
     const body = await req.json();
-    const { scheduledCallId, recipientNumber, callerId, useAiAgent } = body;
+    const { scheduledCallId, recipientNumber, callerId, useAiAgent, voiceNoteUrl: rawVoiceNoteUrl } = body;
     const normalizedRecipient = normalizePhoneNumber(recipientNumber);
 
     if (!normalizedRecipient) {
@@ -32,15 +33,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'AI Agent requires Premium plan' }, { status: 403 });
     }
 
+    if (rawVoiceNoteUrl && !isPremium) {
+      return NextResponse.json({ error: 'Prerecorded voice requires Premium plan' }, { status: 403 });
+    }
+
     // Determine Caller ID: premium = custom, basic = IVR number
     const effectiveCallerId = isPremium && callerId ? callerId : (profile.ivr_number || process.env.DEFAULT_SIP_NUMBER);
     if (!effectiveCallerId) {
       return NextResponse.json({ error: 'No caller ID configured. Please set your IVR number in Settings.' }, { status: 400 });
     }
 
+    const voiceNoteUrl = await createVoiceNoteSignedUrl(rawVoiceNoteUrl);
     const { roomName } = await createOutboundSipCall({
       userId: user.id,
       recipientNumber: normalizedRecipient,
+      callerId: effectiveCallerId,
+      useAiAgent: isPremium && Boolean(useAiAgent),
+      voiceNoteUrl: isPremium ? voiceNoteUrl : null,
+      scheduledCallId: scheduledCallId || null,
     });
 
     // Log the call start in DB

@@ -1,4 +1,4 @@
-import { RoomServiceClient, SipClient } from 'livekit-server-sdk';
+import { AgentDispatchClient, RoomServiceClient, SipClient } from 'livekit-server-sdk';
 
 export function normalizePhoneNumber(value: unknown) {
   return typeof value === 'string' ? value.replace(/[^0-9+]/g, '').trim() : '';
@@ -45,6 +45,10 @@ export function getSipReadiness() {
 export async function createOutboundSipCall(input: {
   userId: string;
   recipientNumber: string;
+  callerId?: string | null;
+  useAiAgent?: boolean;
+  voiceNoteUrl?: string | null;
+  scheduledCallId?: string | null;
 }) {
   const recipientNumber = normalizePhoneNumber(input.recipientNumber);
   if (!recipientNumber) {
@@ -65,8 +69,26 @@ export async function createOutboundSipCall(input: {
   await sipClient.createSipParticipant(config.sipTrunkId, recipientNumber, roomName, {
     participantIdentity: `pstn-${recipientNumber}`,
     participantName: recipientNumber,
+    fromNumber: input.callerId || undefined,
     hidePhoneNumber: false,
   });
+
+  const shouldDispatchAgent = Boolean(input.useAiAgent || input.voiceNoteUrl);
+  if (shouldDispatchAgent) {
+    const agentName = process.env.LIVEKIT_AGENT_NAME || 'calify-agent';
+    const dispatchClient = new AgentDispatchClient(config.livekitHttpsUrl, config.apiKey, config.apiSecret);
+
+    await dispatchClient.createDispatch(roomName, agentName, {
+      metadata: JSON.stringify({
+        mode: input.voiceNoteUrl ? 'voice_note' : 'ai_agent',
+        voiceNoteUrl: input.voiceNoteUrl || null,
+        useAiAgent: Boolean(input.useAiAgent),
+        userId: input.userId,
+        scheduledCallId: input.scheduledCallId || null,
+        recipientNumber,
+      }),
+    });
+  }
 
   return {
     roomName,
