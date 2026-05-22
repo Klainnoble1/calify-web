@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     template: '%s | Calify',
   },
   description:
-    'Calify is a premium communication platform for video calls, scheduled PSTN outreach, AI-assisted calling, and VoIP - all in one place.',
+    'Calify is a premium communication platform for video calls, scheduled phone outreach, AI-assisted calling, and internet calling - all in one place.',
   twitter: {
     creator: '@calify',
     site: '@calify',
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     siteName: 'Calify',
     title: 'Calify',
     description:
-      'Premium video calls, scheduled PSTN outreach, AI-assisted calling, and VoIP in one place.',
+      'Premium video calls, scheduled phone outreach, AI-assisted calling, and internet calling in one place.',
     images: ['/images/calify-open-graph.png'],
   },
   icons: {

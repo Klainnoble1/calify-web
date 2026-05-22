@@ -238,7 +238,7 @@ export default function SchedulerPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px' }}>
         <div>
           <h1 style={{ fontSize: '26px', fontWeight: '700', marginBottom: '4px' }}>Call Scheduler</h1>
-          <p style={{ color: 'var(--calify-text-secondary)', fontSize: '14px' }}>Queue up automated outbound PSTN calls.</p>
+          <p style={{ color: 'var(--calify-text-secondary)', fontSize: '14px' }}>Queue up automated phone calls.</p>
         </div>
         <button onClick={fetchData} className="calify-btn calify-btn-ghost" style={{ padding: '8px' }}>
           <RefreshCw size={18} />

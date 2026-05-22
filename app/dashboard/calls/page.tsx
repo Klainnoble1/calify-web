@@ -50,7 +50,7 @@ export default function CallLogsPage() {
     <div style={{ padding: '32px', maxWidth: '900px' }}>
       <div style={{ marginBottom: '28px' }}>
         <h1 style={{ fontSize: '24px', fontWeight: '700', marginBottom: '4px' }}>Call Logs</h1>
-        <p style={{ color: 'var(--calify-text-secondary)', fontSize: '14px' }}>Full history of your outbound PSTN calls and billing.</p>
+        <p style={{ color: 'var(--calify-text-secondary)', fontSize: '14px' }}>Full history of your phone calls and billing.</p>
       </div>
 
       {/* Summary cards */}

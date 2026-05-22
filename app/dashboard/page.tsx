@@ -97,7 +97,7 @@ export default function DashboardPage() {
             </div>
             <div>
               <p style={{ fontWeight: 600, marginBottom: '2px' }}>Schedule a Call</p>
-              <p style={{ fontSize: '12px', color: 'var(--calify-text-secondary)' }}>Queue outbound PSTN calls</p>
+              <p style={{ fontSize: '12px', color: 'var(--calify-text-secondary)' }}>Schedule phone calls</p>
             </div>
             <ArrowRight size={16} style={{ marginLeft: 'auto', color: 'var(--calify-text-secondary)' }} />
           </div>

@@ -162,7 +162,7 @@ function HomeContent() {
                 style={{ justifyContent: 'center', padding: '13px 20px', fontSize: '14px', borderRadius: '10px' }}
               >
                 <PhoneCall size={16} />
-                Schedule a PSTN call
+                Schedule a phone call
                 <ChevronRight size={14} style={{ marginLeft: 'auto', color: 'var(--calify-text-secondary)' }} />
               </a>
             </div>
@@ -179,8 +179,8 @@ function HomeContent() {
               },
               {
                 icon: <Phone size={22} style={{ color: '#34a853' }} />,
-                title: 'PSTN Outbound',
-                desc: 'Call any mobile or landline from your browser. Internet to any phone.',
+                title: 'Call any phone number',
+                desc: 'Reach mobile phones and landlines from your browser.',
                 badge: null,
               },
               {
@@ -254,7 +254,7 @@ function HomeContent() {
                   color: 'var(--calify-text-secondary)',
                   price: '$0',
                   sub: 'Free forever',
-                  features: ['Outbound calls from IVR number', '$0.02/min call rate', 'Standard video meetings', 'Up to 100 participants'],
+                  features: ['Calls from your Calify number', '$0.02/min call rate', 'Standard video meetings', 'Up to 100 participants'],
                   cta: 'Get started',
                   ctaStyle: 'calify-btn-secondary',
                   href: '/login',
