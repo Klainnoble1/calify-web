@@ -87,7 +87,7 @@ export default function VoipPage() {
       <div className="page-header">
         <div>
           <h1>VoIP Calling</h1>
-          <p>Dial phone numbers through the configured LiveKit SIP trunk. Internet voice/video remains the default for Calify users.</p>
+          <p>Dial phone numbers through the configured Calify SIP trunk. Internet voice/video remains the default for Calify users.</p>
         </div>
         <button onClick={loadData} className="calify-btn calify-btn-ghost" style={{ padding: '8px' }}>
           <RefreshCw size={18} />
@@ -170,7 +170,7 @@ export default function VoipPage() {
           <div className="voip-status-list">
             <div>
               <Shield size={16} />
-              <span>LiveKit URL, API key, API secret</span>
+              <span>Calify calling server, API key, API secret</span>
               <strong>{status?.missing.some((key) => ['LIVEKIT_URL', 'LIVEKIT_API_KEY', 'LIVEKIT_API_SECRET'].includes(key)) ? 'Missing' : 'Configured'}</strong>
             </div>
             <div>

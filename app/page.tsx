@@ -305,7 +305,7 @@ function HomeContent() {
       </main>
 
       <footer>
-        <span>(c) 2025 Calify - Powered by LiveKit - All rights reserved</span>
+        <span>(c) 2025 Calify - Built for secure calls - All rights reserved</span>
       </footer>
     </div>
   );

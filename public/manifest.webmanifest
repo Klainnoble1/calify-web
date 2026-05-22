@@ -1,0 +1,21 @@
+{
+  "name": "Calify",
+  "short_name": "Calify",
+  "description": "Calify video calls and VoIP calling.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1a1a",
+  "theme_color": "#1a73e8",
+  "icons": [
+    {
+      "src": "/images/calify-apple-touch.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/images/calify-open-graph.png",
+      "sizes": "1200x630",
+      "type": "image/png"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Calify">
+  <rect width="512" height="512" rx="112" fill="#1a73e8"/>
+  <path fill="#fff" d="M148 178c0-24 20-44 44-44h132c24 0 44 20 44 44v18H260c-53 0-96 43-96 96s43 96 96 96h108v18c0 24-20 44-44 44H192c-24 0-44-20-44-44V178z"/>
+  <path fill="#1a73e8" d="M226 292c0-19 15-34 34-34h72v68h-72c-19 0-34-15-34-34z"/>
+  <path fill="#fff" d="M342 250l82-48v180l-82-48v-84z"/>
+</svg>

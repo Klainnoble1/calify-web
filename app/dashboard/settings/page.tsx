@@ -147,7 +147,7 @@ export default function SettingsPage() {
               <div>
                 <p style={{ fontWeight: 600, fontSize: '13px', marginBottom: '2px' }}>SIP Trunking</p>
                 <p style={{ fontSize: '12px', color: 'var(--calify-text-secondary)' }}>
-                  Configured through the private LiveKit SIP trunk on the server.
+                  Configured through the private Calify SIP trunk on the server.
                 </p>
               </div>
               <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', background: 'rgba(52,168,83,0.1)', color: '#34a853', border: '1px solid rgba(52,168,83,0.2)', fontWeight: 600 }}>Active</span>
